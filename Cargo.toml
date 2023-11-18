@@ -1,0 +1,11 @@
+[package]
+name = "gv"
+version = "0.1.0"
+authors = ["Matthieu M. <matthieum.147192@gmail.com>"]
+edition = "2021"
+description = "An exploration of the API of Generic Variadics"
+repository = "https://github.com/matthieu-m/gv"
+license = "MIT OR Apache-2.0"
+
+[lints.rust]
+missing_docs = "deny"
