@@ -19,6 +19,15 @@
 
 #![cfg_attr(not(test), no_std)]
 //  Laundry list of features...
+#![feature(const_trait_impl)]
+#![feature(generic_const_exprs)]
 #![feature(never_type)]
+#![feature(specialization)]
+#![feature(try_blocks)]
+#![feature(try_trait_v2)]
+//  Lints
+#![allow(incomplete_features)]
 
-mod builtin;
+pub mod builtin;
+pub mod function;
+pub mod tuple_iterator;

@@ -8,23 +8,44 @@
 //! Instead, providing join/split as builtins make them essentially O(1) operations, on top of which `push` can easily
 //! be built.
 
-use splitter::{Splitter, SplitterAccumulator};
+pub use last_popper::{LastPopper, LastPopperAccumulator};
+pub use splitter::{Splitter, SplitterAccumulator};
 
 /// The tuple trait, only implementable for tuples.
 pub trait Tuple: sealed::TupleSealed + Sized {
     /// The number of elements in the tuple.
     const ARITY: usize;
 
+    /// The type returned by the `self.as_ref()` operation.
+    type AsRef<'a>: Tuple
+    where
+        Self: 'a;
+
+    /// The type returned by the `self.as_mut()` operation.
+    type AsMut<'a>: Tuple
+    where
+        Self: 'a;
+
     /// The type returned by the `self.join(<tuple>)` operation.
     type Join<O>: Tuple
     where
         O: Tuple;
 
-    /// The head type returned by the `self.pop()` operation.
-    type PopHead;
+    /// The head type returned by the `self.pop_first()` operation.
+    type PopFirstHead;
 
-    /// The tail type returned by the `self.pop()` operation.
-    type PopTail;
+    /// The tail type returned by the `self.pop_first()` operation.
+    type PopFirstTail: Tuple;
+
+    /// The head type returned by the `self.pop_last()` operation.
+    type PopLastHead: Tuple
+    where
+        LastPopperAccumulator<(), Self>: LastPopper;
+
+    /// The tail type returned by the `self.pop_last()` operation.
+    type PopLastTail
+    where
+        LastPopperAccumulator<(), Self>: LastPopper;
 
     /// The head type returned by the `self.split::<N>()` operation.
     type SplitHead<const N: usize>: Tuple
@@ -38,13 +59,24 @@ pub trait Tuple: sealed::TupleSealed + Sized {
         Peano<N>: ConsNumber,
         SplitterAccumulator<<Peano<N> as ConsNumber>::AsTuple, (), Self>: Splitter;
 
+    /// Returns a tuple of references to the elements of `self`.
+    fn as_ref(&self) -> Self::AsRef<'_>;
+
+    /// Returns a tuple of mutable references to the elements of `self`.
+    fn as_mut(&mut self) -> Self::AsMut<'_>;
+
     /// Joins `self` and `other`, appending `other` at the end of `self`.
     fn join<O>(self, other: O) -> Self::Join<O>
     where
         O: Tuple;
 
-    /// Pops the head of this tuple, that is returns its first element, and the rest of them.
-    fn pop(self) -> (Self::PopHead, Self::PopTail);
+    /// Pops the first element of this tuple, and returns it and a tuple of the other elements.
+    fn pop_first(self) -> (Self::PopFirstHead, Self::PopFirstTail);
+
+    /// Pops the last element of this tuple, and returns it and a tuple of the other elements.
+    fn pop_last(self) -> (Self::PopLastHead, Self::PopLastTail)
+    where
+        LastPopperAccumulator<(), Self>: LastPopper;
 
     /// Splits the tuple at the N-th element, returning a pair of the N first elements (head) and the rest of the
     /// elements (tail).
@@ -54,14 +86,92 @@ pub trait Tuple: sealed::TupleSealed + Sized {
         SplitterAccumulator<<Peano<N> as ConsNumber>::AsTuple, (), Self>: Splitter;
 }
 
+impl Tuple for ! {
+    const ARITY: usize = 0;
+
+    type AsRef<'a> = ! where Self: 'a;
+
+    type AsMut<'a> = ! where Self: 'a;
+
+    type Join<O> = ! where O: Tuple;
+
+    type PopFirstHead = !;
+
+    type PopFirstTail = !;
+
+    type PopLastHead = !
+    where
+        LastPopperAccumulator<(), Self>: LastPopper;
+
+    type PopLastTail = !
+    where
+        LastPopperAccumulator<(), Self>: LastPopper;
+
+    type SplitHead<const N: usize> = !
+    where
+        Peano<N>: ConsNumber,
+        SplitterAccumulator<<Peano<N> as ConsNumber>::AsTuple, (), Self>: Splitter;
+
+    type SplitTail<const N: usize> = !
+    where
+        Peano<N>: ConsNumber,
+        SplitterAccumulator<<Peano<N> as ConsNumber>::AsTuple, (), Self>: Splitter;
+
+    fn as_ref(&self) -> Self::AsRef<'_> {
+        unreachable!("`as_ref` called on never type !")
+    }
+
+    fn as_mut(&mut self) -> Self::AsMut<'_> {
+        unreachable!("`as_mut` called on never type !")
+    }
+
+    fn join<O>(self, _other: O) -> Self::Join<O>
+    where
+        O: Tuple,
+    {
+        unreachable!("`join` called on never type !")
+    }
+
+    fn pop_first(self) -> (Self::PopFirstHead, Self::PopFirstTail) {
+        unreachable!("`pop_first` called on never type !")
+    }
+
+    fn pop_last(self) -> (Self::PopLastHead, Self::PopLastTail)
+    where
+        LastPopperAccumulator<(), Self>: LastPopper,
+    {
+        unreachable!("`pop_last` called on never type !")
+    }
+
+    fn split<const N: usize>(self) -> (Self::SplitHead<N>, Self::SplitTail<N>)
+    where
+        Peano<N>: ConsNumber,
+        SplitterAccumulator<<Peano<N> as ConsNumber>::AsTuple, (), Self>: Splitter,
+    {
+        unreachable!("`split` called on never type !")
+    }
+}
+
 impl Tuple for () {
     const ARITY: usize = 0;
 
+    type AsRef<'a> = () where Self: 'a;
+
+    type AsMut<'a> = () where Self: 'a;
+
     type Join<O> = O where O: Tuple;
 
-    type PopHead = !;
+    type PopFirstHead = !;
 
-    type PopTail = !;
+    type PopFirstTail = !;
+
+    type PopLastHead = !
+    where
+        LastPopperAccumulator<(), Self>: LastPopper;
+
+    type PopLastTail = !
+    where
+        LastPopperAccumulator<(), Self>: LastPopper;
 
     type SplitHead<const N: usize> = ()
     where
@@ -73,6 +183,10 @@ impl Tuple for () {
         Peano<N>: ConsNumber,
         SplitterAccumulator<<Peano<N> as ConsNumber>::AsTuple, (), Self>: Splitter;
 
+    fn as_ref(&self) -> Self::AsRef<'_> {}
+
+    fn as_mut(&mut self) -> Self::AsMut<'_> {}
+
     fn join<O>(self, other: O) -> Self::Join<O>
     where
         O: Tuple,
@@ -80,8 +194,15 @@ impl Tuple for () {
         other
     }
 
-    fn pop(self) -> (Self::PopHead, Self::PopTail) {
-        panic!("`pop` called on empty tuple")
+    fn pop_first(self) -> (Self::PopFirstHead, Self::PopFirstTail) {
+        unreachable!("`pop_first` called on empty tuple")
+    }
+
+    fn pop_last(self) -> (Self::PopLastHead, Self::PopLastTail)
+    where
+        LastPopperAccumulator<(), Self>: LastPopper,
+    {
+        unreachable!("`pop_last` called on empty tuple")
     }
 
     fn split<const N: usize>(self) -> (Self::SplitHead<N>, Self::SplitTail<N>)
@@ -99,11 +220,23 @@ where
 {
     const ARITY: usize = 1 + Tail::ARITY;
 
+    type AsRef<'a> = (&'a H, Tail::AsRef<'a>) where Self: 'a;
+
+    type AsMut<'a> = (&'a mut H, Tail::AsMut<'a>) where Self: 'a;
+
     type Join<O> = (H, Tail::Join<O>) where O: Tuple;
 
-    type PopHead = H;
+    type PopFirstHead = H;
 
-    type PopTail = Tail;
+    type PopFirstTail = Tail;
+
+    type PopLastHead = <LastPopperAccumulator<(), Self> as LastPopper>::Head
+    where
+        LastPopperAccumulator<(), Self>: LastPopper;
+
+    type PopLastTail = <LastPopperAccumulator<(), Self> as LastPopper>::Tail
+    where
+        LastPopperAccumulator<(), Self>: LastPopper;
 
     type SplitHead<const N: usize> = <SplitterAccumulator<<Peano<N> as ConsNumber>::AsTuple, (), Self> as Splitter>::Head
     where
@@ -115,6 +248,14 @@ where
         Peano<N>: ConsNumber,
         SplitterAccumulator<<Peano<N> as ConsNumber>::AsTuple, (), Self>: Splitter;
 
+    fn as_ref(&self) -> Self::AsRef<'_> {
+        (&self.0, self.1.as_ref())
+    }
+
+    fn as_mut(&mut self) -> Self::AsMut<'_> {
+        (&mut self.0, self.1.as_mut())
+    }
+
     fn join<O>(self, other: O) -> Self::Join<O>
     where
         O: Tuple,
@@ -122,8 +263,15 @@ where
         (self.0, self.1.join(other))
     }
 
-    fn pop(self) -> (Self::PopHead, Self::PopTail) {
+    fn pop_first(self) -> (Self::PopFirstHead, Self::PopFirstTail) {
         self
+    }
+
+    fn pop_last(self) -> (Self::PopLastHead, Self::PopLastTail)
+    where
+        LastPopperAccumulator<(), Self>: LastPopper,
+    {
+        LastPopperAccumulator((), self).last()
     }
 
     fn split<const N: usize>(self) -> (Self::SplitHead<N>, Self::SplitTail<N>)
@@ -153,17 +301,64 @@ mod sealed {
     #[doc(hidden)]
     pub trait TupleSealed {}
 
+    impl TupleSealed for ! {}
+
     impl TupleSealed for () {}
 
     impl<H, Tail> TupleSealed for (H, Tail) where Tail: TupleSealed {}
 } // mod sealed
 
+#[doc(hidden)]
+mod last_popper {
+    use super::Tuple;
+
+    pub struct LastPopperAccumulator<Head, Tail>(pub(super) Head, pub(super) Tail);
+
+    pub trait LastPopper {
+        type Head: Tuple;
+        type Tail;
+
+        fn last(self) -> (Self::Head, Self::Tail);
+    }
+
+    //  FIXME: make the compiler understand that since `H::Join<(TH, ())>` implements `Tuple` and `TT` does so too, then
+    //         `LastPopperAccumulator<Self::Head, TT>` must be implementing it too.
+    //
+    // impl<H, TH, TT> LastPopper for LastPopperAccumulator<H, (TH, TT)>
+    // where
+    //     H: Tuple,
+    //     TT: Tuple,
+    // {
+    //     default type Head = H::Join<(TH, ())>;
+    //     default type Tail = <LastPopperAccumulator<Self::Head, TT> as LastPopper>::Tail;
+    //
+    //     default fn last(self) -> (Self::Head, Self::Tail) {
+    //         let new_head = self.0.join(self.1.0);
+    //
+    //         LastPopperAccumulator(new_head, self.1.1).last()
+    //     }
+    // }
+
+    impl<H, T> LastPopper for LastPopperAccumulator<H, T>
+    where
+        H: Tuple,
+        T: Tuple,
+    {
+        type Head = !;
+        type Tail = !;
+
+        fn last(self) -> (Self::Head, Self::Tail) {
+            todo!("Implement proper recursion support for `last`")
+        }
+    }
+} // mod last_popper
+
+#[doc(hidden)]
 mod splitter {
     use core::marker::PhantomData;
 
     use super::Tuple;
 
-    #[doc(hidden)]
     pub struct SplitterAccumulator<Index, Head, Tail>(Head, Tail, PhantomData<Index>);
 
     impl<Index, Head, Tail> SplitterAccumulator<Index, Head, Tail> {
@@ -173,7 +368,6 @@ mod splitter {
         }
     }
 
-    #[doc(hidden)]
     pub trait Splitter {
         type Head: Tuple;
         type Tail: Tuple;
@@ -316,10 +510,10 @@ mod tests {
     }
 
     #[test]
-    fn pop() {
-        assert_eq!((s!("Hello"), NIL), t!("Hello").pop());
-        assert_eq!((s!("Hello"), t!("World")), t!("Hello", "World").pop());
-        assert_eq!((s!("Hello"), t!("World", "!")), t!("Hello", "World", "!").pop());
+    fn pop_first() {
+        assert_eq!((s!("Hello"), NIL), t!("Hello").pop_first());
+        assert_eq!((s!("Hello"), t!("World")), t!("Hello", "World").pop_first());
+        assert_eq!((s!("Hello"), t!("World", "!")), t!("Hello", "World", "!").pop_first());
     }
 
     #[test]
