@@ -18,16 +18,21 @@
 //! This representation is inefficient to work with, but will allow exploring the API to be.
 
 #![cfg_attr(not(test), no_std)]
+//
 //  Laundry list of features...
+//
 #![feature(const_trait_impl)]
 #![feature(generic_const_exprs)]
 #![feature(never_type)]
+#![feature(non_lifetime_binders)]
 #![feature(specialization)]
 #![feature(try_blocks)]
 #![feature(try_trait_v2)]
+//
 //  Lints
+//
 #![allow(incomplete_features)]
 
 pub mod builtin;
-pub mod function;
+pub mod polymorphic;
 pub mod tuple_iterator;

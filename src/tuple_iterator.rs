@@ -4,7 +4,7 @@ use core::ops::Try;
 
 use crate::{
     builtin::{ConsNumber, LastPopper, LastPopperAccumulator, Peano, Splitter, SplitterAccumulator, Tuple},
-    function::{FlexibleFnMut, Generic2FnMut, GenericFnMut},
+    polymorphic::{Polymorphic2FnMut, PolymorphicFnMut},
 };
 
 /// Iterator over tuple elements.
@@ -122,16 +122,18 @@ where
     /// The predicate is applied in order, until it returns true or there are no elements left.
     pub fn any<F>(self, fun: F) -> bool
     where
-        F: GenericFnMut<bool>,
+        F: for<T> PolymorphicFnMut<Output<T> = bool>,
     {
         struct Any<F>(F);
 
-        impl<F> Generic2FnMut<bool, bool> for Any<F>
+        impl<F> Polymorphic2FnMut<bool> for Any<F>
         where
-            F: GenericFnMut<bool>,
+            F: for<T> PolymorphicFnMut<Output<T> = bool>,
         {
-            fn call_mut<T>(&mut self, supp: bool, value: T) -> bool {
-                supp || self.0.call_mut(value)
+            type Output<T: ?Sized> = bool;
+
+            fn call_mut<T>(&mut self, accumulator: bool, value: T) -> bool {
+                accumulator || self.0.call_mut(value)
             }
         }
 
@@ -143,16 +145,18 @@ where
     /// The predicate is applied in order, until it returns false or there are no elements left.
     pub fn all<F>(self, fun: F) -> bool
     where
-        F: GenericFnMut<bool>,
+        F: for<T> PolymorphicFnMut<Output<T> = bool>,
     {
         struct All<F>(F);
 
-        impl<F> Generic2FnMut<bool, bool> for All<F>
+        impl<F> Polymorphic2FnMut<bool> for All<F>
         where
-            F: GenericFnMut<bool>,
+            F: for<T> PolymorphicFnMut<Output<T> = bool>,
         {
-            fn call_mut<T>(&mut self, supp: bool, value: T) -> bool {
-                supp && self.0.call_mut(value)
+            type Output<T: ?Sized> = bool;
+
+            fn call_mut<T>(&mut self, accumulator: bool, value: T) -> bool {
+                accumulator && self.0.call_mut(value)
             }
         }
 
@@ -164,7 +168,7 @@ where
     /// The predicate is applied in order, until it returns true or there are no elements left.
     pub fn none<F>(self, fun: F) -> bool
     where
-        F: GenericFnMut<bool>,
+        F: for<T> PolymorphicFnMut<Output<T> = bool>,
     {
         !self.any(fun)
     }
@@ -172,7 +176,7 @@ where
     /// Applies an operation to each element of the iterator, consuming it.
     pub fn for_each<F>(self, fun: F)
     where
-        F: GenericFnMut<()>,
+        F: for<T> PolymorphicFnMut<Output<T> = ()>,
     {
         self.fold((), Foldable(fun));
     }
@@ -182,7 +186,7 @@ where
     /// Returns the failure value, if any.
     pub fn try_for_each<R, F>(self, fun: F) -> R
     where
-        F: GenericFnMut<R>,
+        F: for<T> PolymorphicFnMut<Output<T> = R>,
         R: Try<Output = ()>,
     {
         self.try_fold((), Foldable(fun))
@@ -191,7 +195,7 @@ where
     /// Applies an operation to each element of the iterator, producing a single final value.
     pub fn fold<B, F>(self, initial: B, mut fun: F) -> B
     where
-        F: Generic2FnMut<B, B>,
+        F: for<T> Polymorphic2FnMut<B, Output<T> = B>,
     {
         if T::ARITY == 0 {
             initial
@@ -210,7 +214,7 @@ where
     /// Returns either the final value or the failure, whichever occurs.
     pub fn try_fold<R, B, F>(self, initial: B, mut fun: F) -> R
     where
-        F: Generic2FnMut<B, R>,
+        F: for<T> Polymorphic2FnMut<B, Output<T> = R>,
         R: Try<Output = B>,
     {
         if T::ARITY == 0 {
@@ -231,11 +235,13 @@ where
 
 struct Foldable<F>(F);
 
-impl<F, R> Generic2FnMut<(), R> for Foldable<F>
+impl<F, R> Polymorphic2FnMut<()> for Foldable<F>
 where
-    F: GenericFnMut<R>,
+    F: for<T> PolymorphicFnMut<Output<T> = R>,
 {
-    fn call_mut<T>(&mut self, _supp: (), value: T) -> R {
+    type Output<T: ?Sized> = R;
+
+    fn call_mut<T>(&mut self, _argument: (), value: T) -> R {
         self.0.call_mut(value)
     }
 }
@@ -274,7 +280,7 @@ where
     /// Maps each element of the iterator according to the `map` function.
     pub fn map<F>(self, fun: F) -> TupleIterator<<MapperAccumulator<F, (), T> as Mapper<F>>::Head>
     where
-        F: FlexibleFnMut,
+        F: PolymorphicFnMut,
         MapperAccumulator<F, (), T>: Mapper<F>,
     {
         let (_, head, _) = MapperAccumulator(fun, (), self.0).map();
@@ -314,7 +320,7 @@ use mapper::{Mapper, MapperAccumulator};
 #[doc(hidden)]
 mod mapper {
     use crate::builtin::Tuple;
-    use crate::function::FlexibleFnMut;
+    use crate::polymorphic::PolymorphicFnMut;
 
     pub struct MapperAccumulator<F, H, T>(pub(super) F, pub(super) H, pub(super) T);
 
@@ -339,11 +345,11 @@ mod mapper {
 
     impl<F, H, TH, TT> Mapper<F> for MapperAccumulator<F, H, (TH, TT)>
     where
-        F: FlexibleFnMut,
+        F: PolymorphicFnMut,
         H: Tuple,
         TT: Tuple,
     {
-        type Head = <H as Tuple>::Join<(<F as FlexibleFnMut>::Output<TH>, ())>;
+        type Head = <H as Tuple>::Join<(<F as PolymorphicFnMut>::Output<TH>, ())>;
         type Tail = TT;
 
         fn map(self) -> (F, Self::Head, Self::Tail) {
