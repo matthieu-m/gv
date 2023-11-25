@@ -277,6 +277,16 @@ impl<T> TupleIterator<T>
 where
     T: Tuple,
 {
+    /// Reverse the iterator, swapping the last element with the first, etc...
+    pub fn rev(self) -> TupleIterator<<ReverserAccumulator<T> as Reverser>::Result>
+    where
+        ReverserAccumulator<T>: Reverser,
+    {
+        let result = ReverserAccumulator(self.0).rev();
+
+        TupleIterator::from_tuple(result)
+    }
+
     /// Maps each element of the iterator according to the `map` function.
     pub fn map<F>(self, fun: F) -> TupleIterator<<MapperAccumulator<F, (), T> as Mapper<F>>::Head>
     where
@@ -316,6 +326,7 @@ where
 //
 
 use mapper::{Mapper, MapperAccumulator};
+use reverser::{Reverser, ReverserAccumulator};
 
 #[doc(hidden)]
 mod mapper {
@@ -361,6 +372,43 @@ mod mapper {
         }
     }
 } // mod mapper
+
+#[doc(hidden)]
+mod reverser {
+    use crate::builtin::Tuple;
+
+    pub struct ReverserAccumulator<T>(pub(super) T);
+
+    pub trait Reverser {
+        type Result: Tuple;
+
+        fn rev(self) -> Self::Result;
+    }
+
+    impl Reverser for ReverserAccumulator<()> {
+        type Result = ();
+
+        fn rev(self) -> Self::Result {
+            self.0
+        }
+    }
+
+    impl<TH, TT> Reverser for ReverserAccumulator<(TH, TT)>
+    where
+        TT: Tuple,
+        ReverserAccumulator<TT>: Reverser,
+    {
+        type Result = <<ReverserAccumulator<TT> as Reverser>::Result as Tuple>::Join<(TH, ())>;
+
+        fn rev(self) -> Self::Result {
+            let (head, tail) = self.0;
+
+            let reversed = ReverserAccumulator(tail).rev();
+
+            reversed.join((head, ()))
+        }
+    }
+} // mod reverser
 
 //
 //  Type-based Heterogeneous Operations
