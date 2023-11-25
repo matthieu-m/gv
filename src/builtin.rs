@@ -48,16 +48,16 @@ pub trait Tuple: sealed::TupleSealed + Sized {
         LastPopperAccumulator<(), Self>: LastPopper;
 
     /// The head type returned by the `self.split::<N>()` operation.
-    type SplitHead<const N: usize>: Tuple
+    type SplitHead<N>: Tuple
     where
-        Peano<N>: ConsNumber,
-        SplitterAccumulator<<Peano<N> as ConsNumber>::AsTuple, (), Self>: Splitter;
+        N: Tuple,
+        SplitterAccumulator<N, (), Self>: Splitter;
 
     /// The tail type returned by the `self.split::<N>()` operation.
-    type SplitTail<const N: usize>: Tuple
+    type SplitTail<N>: Tuple
     where
-        Peano<N>: ConsNumber,
-        SplitterAccumulator<<Peano<N> as ConsNumber>::AsTuple, (), Self>: Splitter;
+        N: Tuple,
+        SplitterAccumulator<N, (), Self>: Splitter;
 
     /// Returns a tuple of references to the elements of `self`.
     fn as_ref(&self) -> Self::AsRef<'_>;
@@ -80,10 +80,10 @@ pub trait Tuple: sealed::TupleSealed + Sized {
 
     /// Splits the tuple at the N-th element, returning a pair of the N first elements (head) and the rest of the
     /// elements (tail).
-    fn split<const N: usize>(self) -> (Self::SplitHead<N>, Self::SplitTail<N>)
+    fn split<N>(self) -> (Self::SplitHead<N>, Self::SplitTail<N>)
     where
-        Peano<N>: ConsNumber,
-        SplitterAccumulator<<Peano<N> as ConsNumber>::AsTuple, (), Self>: Splitter;
+        N: Tuple,
+        SplitterAccumulator<N, (), Self>: Splitter;
 }
 
 impl Tuple for ! {
@@ -107,15 +107,15 @@ impl Tuple for ! {
     where
         LastPopperAccumulator<(), Self>: LastPopper;
 
-    type SplitHead<const N: usize> = !
+    type SplitHead<N> = !
     where
-        Peano<N>: ConsNumber,
-        SplitterAccumulator<<Peano<N> as ConsNumber>::AsTuple, (), Self>: Splitter;
+        N: Tuple,
+        SplitterAccumulator<N, (), Self>: Splitter;
 
-    type SplitTail<const N: usize> = !
+    type SplitTail<N> = !
     where
-        Peano<N>: ConsNumber,
-        SplitterAccumulator<<Peano<N> as ConsNumber>::AsTuple, (), Self>: Splitter;
+        N: Tuple,
+        SplitterAccumulator<N, (), Self>: Splitter;
 
     fn as_ref(&self) -> Self::AsRef<'_> {
         unreachable!("`as_ref` called on never type !")
@@ -143,10 +143,10 @@ impl Tuple for ! {
         unreachable!("`pop_last` called on never type !")
     }
 
-    fn split<const N: usize>(self) -> (Self::SplitHead<N>, Self::SplitTail<N>)
+    fn split<N>(self) -> (Self::SplitHead<N>, Self::SplitTail<N>)
     where
-        Peano<N>: ConsNumber,
-        SplitterAccumulator<<Peano<N> as ConsNumber>::AsTuple, (), Self>: Splitter,
+        N: Tuple,
+        SplitterAccumulator<N, (), Self>: Splitter,
     {
         unreachable!("`split` called on never type !")
     }
@@ -173,15 +173,15 @@ impl Tuple for () {
     where
         LastPopperAccumulator<(), Self>: LastPopper;
 
-    type SplitHead<const N: usize> = ()
+    type SplitHead<N> = ()
     where
-        Peano<N>: ConsNumber,
-        SplitterAccumulator<<Peano<N> as ConsNumber>::AsTuple, (), Self>: Splitter;
+        N: Tuple,
+        SplitterAccumulator<N, (), Self>: Splitter;
 
-    type SplitTail<const N: usize> = ()
+    type SplitTail<N> = ()
     where
-        Peano<N>: ConsNumber,
-        SplitterAccumulator<<Peano<N> as ConsNumber>::AsTuple, (), Self>: Splitter;
+        N: Tuple,
+        SplitterAccumulator<N, (), Self>: Splitter;
 
     fn as_ref(&self) -> Self::AsRef<'_> {}
 
@@ -205,10 +205,10 @@ impl Tuple for () {
         unreachable!("`pop_last` called on empty tuple")
     }
 
-    fn split<const N: usize>(self) -> (Self::SplitHead<N>, Self::SplitTail<N>)
+    fn split<N>(self) -> (Self::SplitHead<N>, Self::SplitTail<N>)
     where
-        Peano<N>: ConsNumber,
-        SplitterAccumulator<<Peano<N> as ConsNumber>::AsTuple, (), Self>: Splitter,
+        N: Tuple,
+        SplitterAccumulator<N, (), Self>: Splitter,
     {
         ((), ())
     }
@@ -238,15 +238,15 @@ where
     where
         LastPopperAccumulator<(), Self>: LastPopper;
 
-    type SplitHead<const N: usize> = <SplitterAccumulator<<Peano<N> as ConsNumber>::AsTuple, (), Self> as Splitter>::Head
+    type SplitHead<N> = <SplitterAccumulator<N, (), Self> as Splitter>::Head
     where
-        Peano<N>: ConsNumber,
-        SplitterAccumulator<<Peano<N> as ConsNumber>::AsTuple, (), Self>: Splitter;
+        N: Tuple,
+        SplitterAccumulator<N, (), Self>: Splitter;
 
-    type SplitTail<const N: usize> = <SplitterAccumulator<<Peano<N> as ConsNumber>::AsTuple, (), Self> as Splitter>::Tail
+    type SplitTail<N> = <SplitterAccumulator<N, (), Self> as Splitter>::Tail
     where
-        Peano<N>: ConsNumber,
-        SplitterAccumulator<<Peano<N> as ConsNumber>::AsTuple, (), Self>: Splitter;
+        N: Tuple,
+        SplitterAccumulator<N, (), Self>: Splitter;
 
     fn as_ref(&self) -> Self::AsRef<'_> {
         (&self.0, self.1.as_ref())
@@ -274,27 +274,16 @@ where
         LastPopperAccumulator((), self).last()
     }
 
-    fn split<const N: usize>(self) -> (Self::SplitHead<N>, Self::SplitTail<N>)
+    fn split<N>(self) -> (Self::SplitHead<N>, Self::SplitTail<N>)
     where
-        Peano<N>: ConsNumber,
-        SplitterAccumulator<<Peano<N> as ConsNumber>::AsTuple, (), Self>: Splitter,
+        N: Tuple,
+        SplitterAccumulator<N, (), Self>: Splitter,
     {
-        let accumulator: SplitterAccumulator<<Peano<N> as ConsNumber>::AsTuple, _, _> =
-            SplitterAccumulator::new((), self);
+        let accumulator: SplitterAccumulator<N, _, _> = SplitterAccumulator::new((), self);
 
         accumulator.split()
     }
 }
-
-//  Manipulating -- or specializing -- on a const parameter is painful, at the moment, so internally we use a helper
-//  method to represent a const parameter as a type. Oh well...
-#[doc(hidden)]
-pub trait ConsNumber {
-    type AsTuple;
-}
-
-#[doc(hidden)]
-pub struct Peano<const N: usize>;
 
 mod sealed {
     //  A sealed trait to prevent implementing the Tuple trait for non-tuples.
@@ -463,23 +452,11 @@ mod splitter {
     }
 } // splitter
 
-#[rustfmt::skip]
-mod peano {
-    use super::{ConsNumber, Peano};
-
-    impl ConsNumber for Peano<0> { type AsTuple = (); }
-    impl ConsNumber for Peano<1> { type AsTuple = ((), <Peano<0> as ConsNumber>::AsTuple); }
-    impl ConsNumber for Peano<2> { type AsTuple = ((), <Peano<1> as ConsNumber>::AsTuple); }
-    impl ConsNumber for Peano<3> { type AsTuple = ((), <Peano<2> as ConsNumber>::AsTuple); }
-    impl ConsNumber for Peano<4> { type AsTuple = ((), <Peano<3> as ConsNumber>::AsTuple); }
-    impl ConsNumber for Peano<5> { type AsTuple = ((), <Peano<4> as ConsNumber>::AsTuple); }
-    impl ConsNumber for Peano<6> { type AsTuple = ((), <Peano<5> as ConsNumber>::AsTuple); }
-    impl ConsNumber for Peano<7> { type AsTuple = ((), <Peano<6> as ConsNumber>::AsTuple); }
-} // mod peano
-
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unit_cmp)]
+
+    use crate::peano;
 
     use super::*;
 
@@ -518,34 +495,34 @@ mod tests {
 
     #[test]
     fn split() {
-        assert_eq!((NIL, NIL), NIL.split::<0>());
-        assert_eq!((NIL, NIL), NIL.split::<2>());
+        assert_eq!((NIL, NIL), NIL.split::<peano::N0>());
+        assert_eq!((NIL, NIL), NIL.split::<peano::N2>());
 
-        assert_eq!((NIL, t!("0")), t!("0").split::<0>());
-        assert_eq!((t!("0"), NIL), t!("0").split::<1>());
-        assert_eq!((t!("0"), NIL), t!("0").split::<2>());
+        assert_eq!((NIL, t!("0")), t!("0").split::<peano::N0>());
+        assert_eq!((t!("0"), NIL), t!("0").split::<peano::N1>());
+        assert_eq!((t!("0"), NIL), t!("0").split::<peano::N2>());
 
-        assert_eq!((NIL, t!("0", "1")), t!("0", "1").split::<0>());
-        assert_eq!((t!("0"), t!("1")), t!("0", "1").split::<1>());
-        assert_eq!((t!("0", "1"), NIL), t!("0", "1").split::<2>());
-        assert_eq!((t!("0", "1"), NIL), t!("0", "1").split::<3>());
+        assert_eq!((NIL, t!("0", "1")), t!("0", "1").split::<peano::N0>());
+        assert_eq!((t!("0"), t!("1")), t!("0", "1").split::<peano::N1>());
+        assert_eq!((t!("0", "1"), NIL), t!("0", "1").split::<peano::N2>());
+        assert_eq!((t!("0", "1"), NIL), t!("0", "1").split::<peano::N3>());
     }
 
     #[test]
     fn splitter() {
-        fn acc<const N: usize, H, T>(h: H, t: T) -> SplitterAccumulator<<Peano<N> as ConsNumber>::AsTuple, H, T>
+        fn acc<N, H, T>(h: H, t: T) -> SplitterAccumulator<N, H, T>
         where
-            Peano<N>: ConsNumber,
+            N: Tuple,
         {
             SplitterAccumulator::new(h, t)
         }
 
-        assert_eq!((NIL, NIL), acc::<0, _, _>(NIL, NIL).split());
-        assert_eq!((NIL, NIL), acc::<2, _, _>(NIL, NIL).split());
+        assert_eq!((NIL, NIL), acc::<peano::N0, _, _>(NIL, NIL).split());
+        assert_eq!((NIL, NIL), acc::<peano::N2, _, _>(NIL, NIL).split());
 
-        assert_eq!((NIL, t!("0")), acc::<0, _, _>(NIL, t!("0")).split());
-        assert_eq!((t!("0"), t!("1")), acc::<0, _, _>(t!("0"), t!("1")).split());
+        assert_eq!((NIL, t!("0")), acc::<peano::N0, _, _>(NIL, t!("0")).split());
+        assert_eq!((t!("0"), t!("1")), acc::<peano::N0, _, _>(t!("0"), t!("1")).split());
 
-        assert_eq!((t!("0"), t!("1")), acc::<1, _, _>(NIL, t!("0", "1")).split());
+        assert_eq!((t!("0"), t!("1")), acc::<peano::N1, _, _>(NIL, t!("0", "1")).split());
     }
 } // mod tests

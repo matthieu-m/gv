@@ -34,5 +34,6 @@
 #![allow(incomplete_features)]
 
 pub mod builtin;
+pub mod peano;
 pub mod polymorphic;
 pub mod tuple_iterator;

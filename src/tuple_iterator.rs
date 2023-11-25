@@ -3,7 +3,7 @@
 use core::ops::Try;
 
 use crate::{
-    builtin::{ConsNumber, LastPopper, LastPopperAccumulator, Peano, Splitter, SplitterAccumulator, Tuple},
+    builtin::{LastPopper, LastPopperAccumulator, Splitter, SplitterAccumulator, Tuple},
     polymorphic::{Polymorphic2FnMut, PolymorphicFnMut},
 };
 
@@ -108,11 +108,11 @@ where
     }
 
     /// Returns the n-th element.
-    pub fn nth<const N: usize>(self) -> <T::SplitTail<N> as Tuple>::PopFirstHead
+    pub fn nth<N>(self) -> <T::SplitTail<N> as Tuple>::PopFirstHead
     where
-        [(); Self::ARITY + 1 - N]: Sized,
-        Peano<N>: ConsNumber,
-        SplitterAccumulator<<Peano<N> as ConsNumber>::AsTuple, (), T>: Splitter,
+        [(); Self::ARITY + 1 - N::ARITY]: Sized,
+        N: Tuple,
+        SplitterAccumulator<N, (), T>: Splitter,
     {
         self.0.split::<N>().1.pop_first().0
     }
@@ -289,10 +289,10 @@ where
     }
 
     /// Returns an iterator over the elements after the first N of `self`.
-    pub fn skip<const N: usize>(self) -> TupleIterator<<T as Tuple>::SplitTail<N>>
+    pub fn skip<N>(self) -> TupleIterator<<T as Tuple>::SplitTail<N>>
     where
-        Peano<N>: ConsNumber,
-        SplitterAccumulator<<Peano<N> as ConsNumber>::AsTuple, (), T>: Splitter,
+        N: Tuple,
+        SplitterAccumulator<N, (), T>: Splitter,
     {
         let (_, tail) = self.0.split::<N>();
 
@@ -300,10 +300,10 @@ where
     }
 
     /// Returns an iterator over the first N elements, or fewer if there are less in `self`.
-    pub fn take<const N: usize>(self) -> TupleIterator<<T as Tuple>::SplitHead<N>>
+    pub fn take<N>(self) -> TupleIterator<<T as Tuple>::SplitHead<N>>
     where
-        Peano<N>: ConsNumber,
-        SplitterAccumulator<<Peano<N> as ConsNumber>::AsTuple, (), T>: Splitter,
+        N: Tuple,
+        SplitterAccumulator<N, (), T>: Splitter,
     {
         let (head, _) = self.0.split::<N>();
 
