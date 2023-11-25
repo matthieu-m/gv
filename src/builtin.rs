@@ -11,6 +11,21 @@
 pub use last_popper::{LastPopper, LastPopperAccumulator};
 pub use splitter::{Splitter, SplitterAccumulator};
 
+/// A macro to simplify the creation of cons-tuples.
+///
+/// That is, `t!(1, 2, 3, 4)` expands as a cons-tuple semantically equivalent to `(1, 2, 3, 4)`.
+#[macro_export]
+macro_rules! t {
+    () => ();
+    ($i:expr) => { ($i, ()) };
+    ($i:expr, $j:expr) => { ($i, ($j, ())) };
+    ($i:expr, $j:expr, $k:expr) => { ($i, ($j, ($k, ()))) };
+    ($i:expr, $j:expr, $k:expr, $($t:expr),*) => { ($i, ($j, ($k, t!($($t),*)))) };
+}
+
+#[allow(unused_imports)]
+pub(crate) use t;
+
 /// The tuple trait, only implementable for tuples.
 pub trait Tuple: sealed::TupleSealed + Sized {
     /// The number of elements in the tuple.
@@ -468,29 +483,24 @@ mod tests {
         };
     }
 
-    macro_rules! t {
-        () => ();
-        ($i:literal) => { (s!($i), ()) };
-        ($i:literal, $j:literal) => { (s!($i), (s!($j), ())) };
-        ($i:literal, $j:literal, $k:literal) => { (s!($i), (s!($j), (s!($k), ()))) };
-        ($i:literal, $j:literal, $k:literal, $($t:literal),*) => { (s!($i), (s!($j), (s!($k), t!($($t),*)))) };
-    }
-
     #[test]
     fn join() {
         assert_eq!(NIL, NIL.join(NIL));
-        assert_eq!(t!("Hello"), t!("Hello").join(NIL));
-        assert_eq!(t!("Hello"), NIL.join(t!("Hello")));
-        assert_eq!(t!("Hello", "World"), t!("Hello", "World").join(NIL));
-        assert_eq!(t!("Hello", "World"), t!("Hello").join(t!("World")));
-        assert_eq!(t!("Hello", "World"), NIL.join(t!("Hello", "World")));
+        assert_eq!(t!(s!("Hello")), t!(s!("Hello")).join(NIL));
+        assert_eq!(t!(s!("Hello")), NIL.join(t!(s!("Hello"))));
+        assert_eq!(t!(s!("Hello"), s!("World")), t!(s!("Hello"), s!("World")).join(NIL));
+        assert_eq!(t!(s!("Hello"), s!("World")), t!(s!("Hello")).join(t!(s!("World"))));
+        assert_eq!(t!(s!("Hello"), s!("World")), NIL.join(t!(s!("Hello"), s!("World"))));
     }
 
     #[test]
     fn pop_first() {
-        assert_eq!((s!("Hello"), NIL), t!("Hello").pop_first());
-        assert_eq!((s!("Hello"), t!("World")), t!("Hello", "World").pop_first());
-        assert_eq!((s!("Hello"), t!("World", "!")), t!("Hello", "World", "!").pop_first());
+        assert_eq!((s!("Hello"), NIL), t!(s!("Hello")).pop_first());
+        assert_eq!((s!("Hello"), t!(s!("World"))), t!(s!("Hello"), s!("World")).pop_first());
+        assert_eq!(
+            (s!("Hello"), t!(s!("World"), "!")),
+            t!(s!("Hello"), s!("World"), "!").pop_first()
+        );
     }
 
     #[test]
@@ -498,14 +508,14 @@ mod tests {
         assert_eq!((NIL, NIL), NIL.split::<peano::N0>());
         assert_eq!((NIL, NIL), NIL.split::<peano::N2>());
 
-        assert_eq!((NIL, t!("0")), t!("0").split::<peano::N0>());
-        assert_eq!((t!("0"), NIL), t!("0").split::<peano::N1>());
-        assert_eq!((t!("0"), NIL), t!("0").split::<peano::N2>());
+        assert_eq!((NIL, t!(s!("0"))), t!(s!("0")).split::<peano::N0>());
+        assert_eq!((t!(s!("0")), NIL), t!(s!("0")).split::<peano::N1>());
+        assert_eq!((t!(s!("0")), NIL), t!(s!("0")).split::<peano::N2>());
 
-        assert_eq!((NIL, t!("0", "1")), t!("0", "1").split::<peano::N0>());
-        assert_eq!((t!("0"), t!("1")), t!("0", "1").split::<peano::N1>());
-        assert_eq!((t!("0", "1"), NIL), t!("0", "1").split::<peano::N2>());
-        assert_eq!((t!("0", "1"), NIL), t!("0", "1").split::<peano::N3>());
+        assert_eq!((NIL, t!(s!("0"), s!("1"))), t!(s!("0"), s!("1")).split::<peano::N0>());
+        assert_eq!((t!(s!("0")), t!(s!("1"))), t!(s!("0"), s!("1")).split::<peano::N1>());
+        assert_eq!((t!(s!("0"), s!("1")), NIL), t!(s!("0"), s!("1")).split::<peano::N2>());
+        assert_eq!((t!(s!("0"), s!("1")), NIL), t!(s!("0"), s!("1")).split::<peano::N3>());
     }
 
     #[test]
@@ -520,9 +530,15 @@ mod tests {
         assert_eq!((NIL, NIL), acc::<peano::N0, _, _>(NIL, NIL).split());
         assert_eq!((NIL, NIL), acc::<peano::N2, _, _>(NIL, NIL).split());
 
-        assert_eq!((NIL, t!("0")), acc::<peano::N0, _, _>(NIL, t!("0")).split());
-        assert_eq!((t!("0"), t!("1")), acc::<peano::N0, _, _>(t!("0"), t!("1")).split());
+        assert_eq!((NIL, t!(s!("0"))), acc::<peano::N0, _, _>(NIL, t!(s!("0"))).split());
+        assert_eq!(
+            (t!(s!("0")), t!(s!("1"))),
+            acc::<peano::N0, _, _>(t!(s!("0")), t!(s!("1"))).split()
+        );
 
-        assert_eq!((t!("0"), t!("1")), acc::<peano::N1, _, _>(NIL, t!("0", "1")).split());
+        assert_eq!(
+            (t!(s!("0")), t!(s!("1"))),
+            acc::<peano::N1, _, _>(NIL, t!(s!("0"), s!("1"))).split()
+        );
     }
 } // mod tests
