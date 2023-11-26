@@ -277,6 +277,14 @@ impl<T> TupleIterator<T>
 where
     T: Tuple,
 {
+    /// Chains the two iterators together.
+    pub fn chain<U>(self, other: TupleIterator<U>) -> TupleIterator<<T as Tuple>::Join<U>>
+    where
+        U: Tuple,
+    {
+        TupleIterator::from_tuple(self.0.join(other.0))
+    }
+
     /// Reverses the iterator, swapping the last element with the first, etc...
     pub fn rev(self) -> TupleIterator<<ReverserAccumulator<T> as Reverser>::Result>
     where
