@@ -23,6 +23,8 @@
 //
 #![feature(const_trait_impl)]
 #![feature(generic_const_exprs)]
+#![feature(generic_const_items)]
+#![feature(inherent_associated_types)]
 #![feature(never_type)]
 #![feature(non_lifetime_binders)]
 #![feature(specialization)]

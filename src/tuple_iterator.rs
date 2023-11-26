@@ -271,13 +271,13 @@ where
 //  That is, operations which may alter the shape of the iterator.
 //
 
-//  TODO: rev.
+//  TODO: chain.
 
 impl<T> TupleIterator<T>
 where
     T: Tuple,
 {
-    /// Reverse the iterator, swapping the last element with the first, etc...
+    /// Reverses the iterator, swapping the last element with the first, etc...
     pub fn rev(self) -> TupleIterator<<ReverserAccumulator<T> as Reverser>::Result>
     where
         ReverserAccumulator<T>: Reverser,
@@ -415,3 +415,142 @@ mod reverser {
 //
 
 //  TODO: filter, partition, skip_while, take_while.
+
+impl<T> TupleIterator<T>
+where
+    T: Tuple,
+{
+    //  The compiler is unfortunately not cooperating.
+    //
+    // /// Returns a pair of iterators, the first of which contains all the elements for which the predicate returned true
+    // /// and the second of which all the elements for which the predicate returned false.
+    // ///
+    // /// The predicate will receive `PhantomData<T>` for each element of the tuple.
+    // pub fn partition<F>(self) -> (TupleIterator<impl Tuple>, TupleIterator<impl Tuple>)
+    // where
+    //     F: for<T> PolymorphicFnStatic<Output<T> = bool>,
+    // {
+    //     let partitioner = PartitionerAccumulator(self.0);
+    //
+    //     let (trues, falses) = <PartitionerAccumulator<T> as Partitioner>::partition::<F>(partitioner);
+    //
+    //     (TupleIterator::from_tuple(trues), TupleIterator::from_tuple(falses))
+    // }
+}
+
+//
+//  Implementation helpers for Type-based Heterogeneous operations.
+//
+
+/*
+use partitioner::{Partitioner, PartitionerAccumulator};
+use selector::{Select, Selector};
+
+#[doc(hidden)]
+mod partitioner {
+    use crate::builtin::Tuple;
+    use crate::polymorphic::PolymorphicFnStatic;
+
+    use super::{Select, Selector};
+
+    pub struct PartitionerAccumulator<T>(pub(super) T);
+
+    pub trait Partitioner  {
+        fn partition<F>(self) -> (impl Tuple, impl Tuple)
+        where
+            F: for<X> PolymorphicFnStatic<Output<X> = bool>;
+    }
+
+    impl<T> Partitioner for PartitionerAccumulator<T>
+    where
+        T: Tuple,
+    {
+        default fn partition<F>(self) -> (impl Tuple, impl Tuple)
+        where
+            F: for<X> PolymorphicFnStatic<Output<X> = bool>,
+        {
+            let (head, tail) = self.0.pop_first();
+
+            let (trues, falses) = <PartitionerAccumulator<<T as Tuple>::PopFirstTail> as Partitioner>::partition::<F>(PartitionerAccumulator(tail));
+
+            let mut bundle = Some((head, trues, falses));
+
+            let if_true = || {
+                let (head, trues, falses) = bundle.take().unwrap();
+
+                ((head, ()).join(trues), falses)
+            };
+
+            let if_false = || {
+                let (head, trues, falses) = bundle.take().unwrap();
+
+                (trues, (head, ()).join(falses))
+            };
+
+            <
+                Selector<{F::RESULT::<<T as Tuple>::PopFirstHead>}>
+                as
+                Select<_, _>
+            >::select(if_true, if_false)
+        }
+    }
+
+    impl Partitioner for PartitionerAccumulator<!> {
+        fn partition<F>(self) -> (impl Tuple, impl Tuple)
+        where
+            F: for<X> PolymorphicFnStatic<Output<X> = bool>,
+        {
+            unreachable!()
+        }
+    }
+
+    impl Partitioner for PartitionerAccumulator<()> {
+        fn partition<F>(self) -> (impl Tuple, impl Tuple)
+        where
+            F: for<X> PolymorphicFnStatic<Output<X> = bool>,
+        {
+            ((), ())
+        }
+    }
+} // mod partitioner
+
+#[doc(hidden)]
+mod selector {
+    pub type SelectorResult<const B: bool, T, F> = <Selector<B> as Select<T, F>>::Result;
+
+    pub struct Selector<const B: bool>;
+
+    pub trait Select<T, F> {
+        type Result;
+
+        fn select<FT, FF>(if_true: FT, if_false: FF) -> Self::Result
+        where
+            FT: FnOnce() -> T,
+            FF: FnOnce() -> F;
+    }
+
+    impl<T, F> Select<T, F> for Selector<true> {
+        type Result = T;
+
+        fn select<FT, FF>(if_true: FT, _if_false: FF) -> Self::Result
+        where
+            FT: FnOnce() -> T,
+            FF: FnOnce() -> F,
+        {
+            if_true()
+        }
+    }
+
+    impl<T, F> Select<T, F> for Selector<false> {
+        type Result = F;
+
+        fn select<FT, FF>(_if_true: FT, if_false: FF) -> Self::Result
+        where
+            FT: FnOnce() -> T,
+            FF: FnOnce() -> F,
+        {
+            if_false()
+        }
+    }
+} // mod selector
+*/

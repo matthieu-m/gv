@@ -4,6 +4,16 @@
 
 /// A function over a generic argument.
 #[const_trait]
+pub trait PolymorphicFnStatic {
+    /// Output type of `Self::call(...)` for a given argument `T`.
+    type Output<T: ?Sized>;
+
+    /// Result of calling the function with T.
+    const RESULT<T>: Self::Output<T>;
+}
+
+/// A function over a generic argument.
+#[const_trait]
 pub trait PolymorphicFn {
     /// Output type of `self.call(...)` for a given argument `T`.
     type Output<T: ?Sized>;
